@@ -49,33 +49,50 @@ const scheduler = {
 			newDay = (newDay < 10)?"0"+newDay:newDay;
 			
 			const str = `${newYear}.${newMonth}.${newDay}`;
-			const stamp = parseInt(newStamp / 1000); // 1초 단위 unix time
 			
 			days.push({
 				'date' : str, // 2020.07.20
 				'day' : newDay, // 01, 02 
 				'yoil' :  this.getYoil(newStamp), // 한글 요일 
 				'yoilEn' : this.getYoil(newStamp, 'en'), // 영문 요일 
-				'stamp' : stamp, // 1초 단위 unix timestamp
+				'stamp' : newStamp,
 				'object' : date,
 			});
 		} // endfor 
 		
-		if (nextMonthDays >= 7) {
-			days.forEach((v, i, _days) => {
-				if (i >= 35) {
-					delete _days[i];
-				}
-			});
-			
-			days.length = 35;
-		}
+		
 		
 		/** 스케줄 조회 S */
-		const schedules = this.get(days[0].object, days[days.length - 1].object);
+		const schedules= await this.get(days[0].object, days[days.length - 1].object);
+		const colors = Object.keys(this.getColors());
 		
+		days.forEach((v, i, _days) => {
+			let isContinue = true;
+			if (i >= 35) {
+				if (nextMonthDays >= 7) {
+					delete _days[i];
+					isContinue = false;
+				}
+			}
+			
+			if (isContinue) {
+				const date = v.date.replace(/\./g, "");
+				const schedule = {};
+				colors.forEach((color) => {
+					const cl = color.replace(/#/g, "");
+					const key = "S" + date + "_" + cl;
+					schedule[cl] = schedules[key]?schedules[key]:[];
+				});
+				
+				_days[i].schedules = schedule;
+				console.log(schedule);
+			}
+		});
 		/** 스케줄 조회 E */
 		
+		if (nextMonthDays >= 7) {	
+			days.length = 35;
+		}
 		
 		let nextYear = year, prevYear = year;
 		let nextMonth = month, prevMonth = month;
@@ -92,9 +109,9 @@ const scheduler = {
 			nextMonth++;
 		}
 		
-		
 		const yoilsEn = this.getYoils('en');
-		return { days, year, month, yoilsEn, prevYear, prevMonth, nextYear, nextMonth };
+		const fontColor = this.getColors();
+		return { days, year, month, yoilsEn, prevYear, prevMonth, nextYear, nextMonth, colors, fontColor };
 	},
 	/**
 	* 현재 요일(일~토)
@@ -127,14 +144,14 @@ const scheduler = {
 	*
 	*/
 	getColors : function() {
-		return [
-			'pink',
-			'blue',
-			'skyblue',
-			'orange',
-			'red',
-			'gray',
-		];
+		return {
+			pink :"black",
+			blue : "white",
+			skyblue : "black",
+			orange : "white",
+			red : "white",
+			gray : "black",
+		}
 	},
 	/**
 	* 스케줄 추가 
@@ -149,16 +166,18 @@ const scheduler = {
 		const endStamp = new Date(endDate[0], Number(endDate[1]) -1, endDate[2]).getTime();
 
 		const step = 60 * 60 * 24 * 1000;
+		const period = startStamp + "_" + endStamp;
 		
 		try {
 			for (let i = startStamp; i <= endStamp; i += step) {
-				const sql = `INSERT INTO schedule (scheduleDate, title, color) 
-										VALUES (:scheduleDate, :title, :color)`;
+				const sql = `INSERT INTO schedule (scheduleDate, title, color, period) 
+										VALUES (:scheduleDate, :title, :color, :period)`;
 				
 				const replacements = {
 					scheduleDate : new Date(i),
 					title : params.title,
 					color : params.color,
+					period,
 				};
 				await sequelize.query(sql, {
 					replacements,
@@ -168,7 +187,7 @@ const scheduler = {
 			
 			return true;
 		} catch (err) {
-
+			
 			return false;
 		}
 	},
@@ -185,15 +204,57 @@ const scheduler = {
 			replacements : [sdate, edate],
 			type : QueryTypes.SELECT,
 		});
-		/*
+		
 		const list = {};
-		rows.forEach( async (v) => {
-			let scheduleDate = "S" + v.scheduleDate.replace(/-/g, '');
-			list[scheduleDate][v.color] = list[scheduleDate][v.color] || [];
-			list[scheduleDate][v.color].push(v);
+		rows.forEach( async(v) => {
+			let key = "S" + v.scheduleDate.replace(/-/g, "");
+			key += "_" + v.color.replace(/#/g, "");
+			list[key] = list[key] || [];
+			list[key].push(v);
 		});
-		console.log(list);
-		*/
+		
+		return list;
+	},
+	/**
+	* unixtimestamp -> 날짜 형식 
+	*
+	*/
+	getDate : function (stamp) {
+		const date = new Date(Number(stamp));
+		const year = date.getFullYear();
+		let month = date.getMonth() + 1;
+		month = (month < 10)?"0"+month:month;
+		let day = date.getDate();
+		day = (day < 10)?"0"+day:day;
+		
+		return `${year}.${month}.${day}`;
+	},
+	/**
+	* 스케줄 조회
+	*
+	*/
+	getSchedule : async function(stamp, color) {
+		try {
+			const sql = "SELECT * FROM schedule WHERE scheduleDate = ? AND color = ?";
+			let rows = await sequelize.query(sql, {
+				replacements : [new Date(Number(stamp)), color],
+				type : QueryTypes.SELECT,
+			});
+			
+			rows = rows[0] || {};
+			if (rows) {
+				// 스케줄 기간 
+				const period = rows.period.split("_");
+				const startDate = this.getDate(period[0], 'period');
+				const endDate = this.getDate(period[1], 'period');
+				
+				
+			}
+			return rows;
+		} catch (err) {
+			
+			return {};
+		}
 	}
 };
 

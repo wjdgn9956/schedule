@@ -4,8 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development nodemon app",
-    "start": "cross env NODE_ENV=production pm2 start app.js"
+    "dev": "nodemon app",
+    "start": "cross-env NODE_ENV=production pm2 start app.js"
   },
   "author": "",
   "license": "ISC",
