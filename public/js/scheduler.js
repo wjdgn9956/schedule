@@ -1,6 +1,6 @@
 $(function() {
 	$(".scheduler .day .no").click(function() {
-		const stamp = $(this).data("stamp");
+		const stamp = $(this).closest(".day").data("stamp");
 		const url = "/schedule?stamp=" + stamp;
 		yh.layer.popup(url, 400, 500);
 	});
@@ -12,6 +12,44 @@ $(function() {
 		url = `/schedule/view/${stamp}/${color}`;
 		yh.layer.popup(url, 400, 350);
 	});
+	
+	/** 스케줄 삭제 */
+
+	$("body").on("click", ".schedule_view .delete", function() {
+        if (!confirm('정말 삭제하시겠습니까?')){
+            return;
+        }
+		$obj = $(this).closest(".schedule_view")
+		const period = $obj.data("period");
+		const color = $obj.data("color");
+		const url = "/schedule";
+
+		const formData = new FormData();
+		formData.period = period;
+		formData.color = color;
+		
+		axios.delete(url, { params : formData })
+			.then(function(res) {
+				if (res.data.success) { // 삭제 성공 
+					location.reload();
+				} else { // 삭제 실패 
+					alert("삭제 실패");
+				}
+			})
+			.catch(function(err) {
+				console.error(err);
+			});
+	});
+
+    /** 스케줄 수정  */
+    $("body").on("click", ".schedule_view .modify", function() {
+
+        $obj = $(this).closest(".schedule_view");
+        const period = $obj.data("period");
+        const color = $obj.data("color");
+        const url = `/schedule/${period}/${color}`;
+        yh.layer.popup(url, 400, 500);
+    });
 	
 	/** 스케줄 저장 */
 	$("body").on("click", "#frmSchedule .save", function() {

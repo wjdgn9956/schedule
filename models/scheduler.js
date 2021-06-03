@@ -219,7 +219,7 @@ const scheduler = {
 	* unixtimestamp -> 날짜 형식 
 	*
 	*/
-	getDate : function (stamp) {
+	getDate : function (stamp, mode) {
 		const date = new Date(Number(stamp));
 		const year = date.getFullYear();
 		let month = date.getMonth() + 1;
@@ -227,7 +227,15 @@ const scheduler = {
 		let day = date.getDate();
 		day = (day < 10)?"0"+day:day;
 		
-		return `${year}.${month}.${day}`;
+		if (mode == "period") {
+			const yoils = this.getYoils();
+			const yoil = date.getDay();
+
+			return `${Number(month)}월 ${Number(day)}일 ${yoils[yoil]}요일`;
+		} else {
+			return `${year}.${month}.${day}`;
+		}
+		
 	},
 	/**
 	* 스케줄 조회
@@ -247,15 +255,68 @@ const scheduler = {
 				const period = rows.period.split("_");
 				const startDate = this.getDate(period[0], 'period');
 				const endDate = this.getDate(period[1], 'period');
-				
-				
+				rows.periodStr = startDate + " ~ " + endDate;
+		
 			}
+			console.log(rows);
 			return rows;
 		} catch (err) {
 			
 			return {};
 		}
-	}
+	},
+	/**
+	 * 스케줄 삭제
+	 * 
+	 */
+	delete : async function (period, color) {
+		if (!period || !color) 
+			return false;
+		
+		try {
+			
+			const sql = "DELETE FROM schedule WHERE period =? AND color = ?";
+			await sequelize.query(sql,{
+				replacements : [period, color],
+				type:QueryTypes.DELETE,
+			});
+			
+
+			return true;
+		} catch(err) {
+			return false;
+		}
+	},
+
+	/**
+	 * 스케줄 수정 정보
+	 */
+
+	getInfo : async function (period ,color) {
+
+		 
+
+			const sql = "SELECT title FROM schedule WHERE period = ? AND color =? LIMIT1"; 
+			const rows = await sequelize.query(sql, {
+				replacements : [period, color],
+				type: QueryTypes.SELECT,
+			});
+
+			if (rows.length == 0) 
+				return {};
+				
+			const periods = period.split("_");
+			const startDate = this.getDate(periods[0]);
+			const endDate = this.getDate(periods[1]);
+			const data = {
+				startDate,
+				endDate,
+				title : rows[0].title,
+				color,
+			}
+			
+			return data; 
+	},
 };
 
 

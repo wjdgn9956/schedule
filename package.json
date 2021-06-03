@@ -1,5 +1,5 @@
 {
-  "name": "winston",
+  "name": "scheduler",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
@@ -18,7 +18,8 @@
     "nunjucks": "^3.2.3",
     "pm2": "^4.5.6",
     "sequelize": "^6.6.2",
-    "sequelize-cli": "^6.2.0"
+    "sequelize-cli": "^6.2.0",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.7"
