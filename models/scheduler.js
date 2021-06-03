@@ -167,8 +167,13 @@ const scheduler = {
 		const step = 60 * 60 * 24 * 1000;
 		const period = startStamp + "_" + endStamp;
 		
+		/** 이미 선점된 스케줄이 있으면 등록,수정 불가 */
+		const isExists = await this.checkColor(period, params.color, params.prevColor);
+		if (isExists) 
+			return false;
+		
 		try {
-			if (params.prevColor) {
+			if (params.prevColor) {				
 				const sql = "DELETE FROM schedule WHERE period = :period AND color = :color";
 				await sequelize.query(sql, {
 					replacements : { period : params.prevPeriod, color: params.prevColor },
@@ -320,6 +325,110 @@ const scheduler = {
 		}
 		
 		return data;
+	},
+	/**
+	* 색상변경 처리 
+	*
+	*/
+	changeColor : async function(period, prevColor, color) {
+		try {
+			const isExists = await this.checkColor(period, color);
+			if (isExists)
+				return false;
+			
+			const sql = `UPDATE schedule 
+									SET 
+										color = :color 
+									WHERE 
+										period = :period AND color = :prevColor`;
+			const replacements = { color, period, prevColor };
+			
+			await sequelize.query(sql, {
+				replacements,
+				type : QueryTypes.UPDATE,
+			});
+			
+			return true;
+		} catch (err) {
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
+			return false;
+		}
+	},
+	/**
+	* 스케줄 색상 선점여부 체크
+	*
+	*/
+	checkColor : async function(period, color, prevColor) {
+		period = period.split("_");
+		const sDate = new Date(Number(period[0]));
+		const eDate = new Date(Number(period[1]));
+		
+		let sql = "SELECT COUNT(*) as cnt FROM schedule WHERE scheduleDate BETWEEN :sDate AND :eDate AND color = :color";
+		const replacements = { sDate, eDate, color };
+		
+		if (prevColor) {
+			sql += " AND color <> :prevColor";
+			replacements.prevColor = prevColor;
+		}
+		
+		const rows = await sequelize.query(sql, {
+			replacements, 
+			type : QueryTypes.SELECT,
+		});
+		
+		return rows[0].cnt > 0;
+	},
+	/**
+	* 오늘 스케줄 조회 
+	*
+	*/
+	getTodaySchedules : async function() {
+		try {
+			const date = new Date();
+			const scheduleDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+			const sql = "SELECT * FROM schedule WHERE scheduleDate = ? AND isChecked = 0";
+			const rows = await sequelize.query(sql, {
+				replacements : [scheduleDate],
+				type : QueryTypes.SELECT,
+			});
+			
+			return rows;
+		} catch(err) {
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
+			return [];
+		}
+	},
+	/**
+	* 오늘 스케줄 확인 처리 
+	*
+	*/
+	confirmTodaySchedule : async function(colors) {
+		if (!colors) 
+			return false;
+		
+		try {
+			const date = new Date();
+			const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+			colors.forEach(async (color) => {
+				const sql = `UPDATE schedule 
+										SET 
+											isChecked = 1 
+									WHERE 
+											scheduleDate = ? AND color = ?`;
+				await sequelize.query(sql, {
+					replacements : [today, color],
+					type : QueryTypes.UPDATE,
+				});
+			});
+			
+			return true;
+		} catch (err) {
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
+			return false;
+		}
 	},
 };
 
