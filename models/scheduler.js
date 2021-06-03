@@ -1,5 +1,5 @@
 const { sequelize, Sequelize : { QueryTypes } } = require('./index');
-
+const logger = require('../lib/logger');
 
 /**
 * 스케줄러 Model 
@@ -85,7 +85,6 @@ const scheduler = {
 				});
 				
 				_days[i].schedules = schedule;
-				console.log(schedule);
 			}
 		});
 		/** 스케줄 조회 E */
@@ -169,6 +168,14 @@ const scheduler = {
 		const period = startStamp + "_" + endStamp;
 		
 		try {
+			if (params.prevColor) {
+				const sql = "DELETE FROM schedule WHERE period = :period AND color = :color";
+				await sequelize.query(sql, {
+					replacements : { period : params.prevPeriod, color: params.prevColor },
+					type : QueryTypes.DELETE,
+				});
+			}
+			
 			for (let i = startStamp; i <= endStamp; i += step) {
 				const sql = `INSERT INTO schedule (scheduleDate, title, color, period) 
 										VALUES (:scheduleDate, :title, :color, :period)`;
@@ -187,7 +194,8 @@ const scheduler = {
 			
 			return true;
 		} catch (err) {
-			
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
 			return false;
 		}
 	},
@@ -227,15 +235,14 @@ const scheduler = {
 		let day = date.getDate();
 		day = (day < 10)?"0"+day:day;
 		
-		if (mode == "period") {
+		if (mode == 'period') {
 			const yoils = this.getYoils();
 			const yoil = date.getDay();
-
+			
 			return `${Number(month)}월 ${Number(day)}일 ${yoils[yoil]}요일`;
-		} else {
+		} else{
 			return `${year}.${month}.${day}`;
 		}
-		
 	},
 	/**
 	* 스케줄 조회
@@ -255,67 +262,64 @@ const scheduler = {
 				const period = rows.period.split("_");
 				const startDate = this.getDate(period[0], 'period');
 				const endDate = this.getDate(period[1], 'period');
-				rows.periodStr = startDate + " ~ " + endDate;
-		
+				rows.periodStr = startDate + " ~ " + endDate;				
 			}
-			console.log(rows);
+			
 			return rows;
 		} catch (err) {
-			
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
 			return {};
 		}
 	},
 	/**
-	 * 스케줄 삭제
-	 * 
-	 */
+	* 스케줄 삭제 
+	*
+	*/
 	delete : async function (period, color) {
 		if (!period || !color) 
 			return false;
 		
 		try {
-			
-			const sql = "DELETE FROM schedule WHERE period =? AND color = ?";
-			await sequelize.query(sql,{
+			const sql = "DELETE FROM schedule WHERE period = ? AND color = ?";
+			await sequelize.query(sql, {
 				replacements : [period, color],
-				type:QueryTypes.DELETE,
+				type : QueryTypes.DELETE,
 			});
-			
-
+		
 			return true;
-		} catch(err) {
+		} catch (err) {
+			logger(err.message, 'error');
+			logger(err.stack, 'error');
 			return false;
 		}
 	},
-
 	/**
-	 * 스케줄 수정 정보
-	 */
-
-	getInfo : async function (period ,color) {
-
-		 
-
-			const sql = "SELECT title FROM schedule WHERE period = ? AND color =? LIMIT1"; 
-			const rows = await sequelize.query(sql, {
-				replacements : [period, color],
-				type: QueryTypes.SELECT,
-			});
-
-			if (rows.length == 0) 
-				return {};
-				
-			const periods = period.split("_");
-			const startDate = this.getDate(periods[0]);
-			const endDate = this.getDate(periods[1]);
-			const data = {
-				startDate,
-				endDate,
-				title : rows[0].title,
-				color,
-			}
-			
-			return data; 
+	* 스케줄 수정 정보 
+	*
+	*/
+	getInfo : async function (period, color) {
+		const sql = 'SELECT title FROM schedule WHERE period = ? AND color = ? LIMIT 1';
+		const rows = await sequelize.query(sql, {
+			replacements : [period, color],
+			type : QueryTypes.SELECT,
+		});
+		
+		if (rows.length == 0) 
+			return {};
+		
+		const periods = period.split("_");
+		const startDate = this.getDate(periods[0]);
+		const endDate = this.getDate(periods[1]);
+		const data = {
+			stamp : Number(periods[0]),
+			startDate,
+			endDate,
+			title : rows[0].title,
+			color,
+		}
+		
+		return data;
 	},
 };
 

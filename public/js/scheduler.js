@@ -14,11 +14,11 @@ $(function() {
 	});
 	
 	/** 스케줄 삭제 */
-
 	$("body").on("click", ".schedule_view .delete", function() {
-        if (!confirm('정말 삭제하시겠습니까?')){
-            return;
-        }
+		if (!confirm('정말 삭제하시겠습니까?')) {
+			return;
+		}
+		
 		$obj = $(this).closest(".schedule_view")
 		const period = $obj.data("period");
 		const color = $obj.data("color");
@@ -40,16 +40,17 @@ $(function() {
 				console.error(err);
 			});
 	});
-
-    /** 스케줄 수정  */
-    $("body").on("click", ".schedule_view .modify", function() {
-
-        $obj = $(this).closest(".schedule_view");
-        const period = $obj.data("period");
-        const color = $obj.data("color");
-        const url = `/schedule/${period}/${color}`;
-        yh.layer.popup(url, 400, 500);
-    });
+	
+	/** 스케줄 수정 */
+	$("body").on("click", ".schedule_view .modify", function() {
+		$obj = $(this).closest(".schedule_view");
+		const period = $obj.data("period");
+		const color = $obj.data("color");
+		const url = `/schedule/${period}/${color}`;
+		console.log(url);
+		yh.layer.popup(url, 400, 500);
+	});
+	
 	
 	/** 스케줄 저장 */
 	$("body").on("click", "#frmSchedule .save", function() {

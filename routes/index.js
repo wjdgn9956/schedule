@@ -1,5 +1,6 @@
 const scheduler = require("../models/scheduler");
 const express = require('express');
+const logger = require('../lib/logger');
 const { validator } = require('../middlewares/validator');
 
 const router = express.Router();
@@ -40,9 +41,10 @@ router.route('/schedule')
 		/** 스케줄 삭제 */
 		.delete(async (req, res, next) => {
 			const result = await scheduler.delete(req.query.period, req.query.color);
+			
 			return res.json({success : result});
 		});
-		
+
 /** 스케줄 조회 */
 router.get("/schedule/view/:stamp/:color", async (req, res, next) => {
 	const data = await scheduler.getSchedule(req.params.stamp, req.params.color);
@@ -53,9 +55,9 @@ router.get("/schedule/view/:stamp/:color", async (req, res, next) => {
 
 /** 스케줄 수정 */
 router.get("/schedule/:period/:color", async (req, res, next) => {
-
-	const info = await scheduler.getInfo(req.params.period, req.params.color);
-	data.colors = Object.keys(scheduler.getColors());
+	const data = await scheduler.getInfo(req.params.period, req.params.color);
+	data.period = req.params.period;
+	data.colors =  Object.keys(scheduler.getColors());
 	
 	return res.render("form", data);
 });
